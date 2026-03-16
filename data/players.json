@@ -2,16 +2,16 @@
   {
     "id": 1,
     "name": "Leticia",
-    "score": 1,
-    "gymCount": 1,
+    "score": 0,
+    "gymCount": 0,
     "junkCount": 0,
     "avatar": "👤"
   },
   {
     "id": 2,
     "name": "Lidio",
-    "score": 1,
-    "gymCount": 1,
+    "score": 0,
+    "gymCount": 0,
     "junkCount": 0,
     "avatar": "👤"
   }
