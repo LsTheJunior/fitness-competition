@@ -1,16 +1,1 @@
-[
-  {
-    "playerId": 2,
-    "type": "gym",
-    "points": 1,
-    "date": "2026-03-16",
-    "timestamp": "2026-03-16T20:16:59.771Z"
-  },
-  {
-    "playerId": 1,
-    "type": "gym",
-    "points": 1,
-    "date": "2026-03-16",
-    "timestamp": "2026-03-16T20:16:52.461Z"
-  }
-]
+[]
