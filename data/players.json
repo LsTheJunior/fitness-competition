@@ -2,10 +2,10 @@
   {
     "id": 1,
     "name": "Leticia",
-    "score": 0,
-    "gymCount": 0,
+    "score": 1,
+    "gymCount": 1,
     "junkCount": 0,
-    "avatar": "👩"
+    "avatar": "👤"
   },
   {
     "id": 2,
@@ -13,6 +13,6 @@
     "score": 0,
     "gymCount": 0,
     "junkCount": 0,
-    "avatar": "👨"
+    "avatar": "👤"
   }
 ]
