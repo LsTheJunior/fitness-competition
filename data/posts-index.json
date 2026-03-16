@@ -1,0 +1,16 @@
+[
+  {
+    "id": 1,
+    "title": "Bem-vindo à Competição Fitness!",
+    "date": "2026-03-16",
+    "file": "post1.md",
+    "author": "Organizador"
+  },
+  {
+    "id": 2,
+    "title": "Dicas para Manter a Motivação",
+    "date": "2026-03-15",
+    "file": "post2.md",
+    "author": "Organizador"
+  }
+]

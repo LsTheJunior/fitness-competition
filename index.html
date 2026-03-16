@@ -1,0 +1,1000 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Competição Fitness - Tracker</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .card {
+            backdrop-filter: blur(10px);
+            background: rgba(255, 255, 255, 0.95);
+        }
+        .player-card {
+            transition: transform 0.3s ease;
+        }
+        .player-card:hover {
+            transform: translateY(-5px);
+        }
+        .winner-glow {
+            box-shadow: 0 0 20px rgba(34, 197, 94, 0.6);
+            border: 2px solid #22c55e;
+        }
+        .btn-gym {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        }
+        .btn-junk {
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+        }
+        .history-item {
+            animation: slideIn 0.3s ease;
+        }
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+        .progress-bar {
+            transition: width 0.5s ease;
+        }
+    </style>
+</head>
+<body class="p-4">
+    <div class="max-w-7xl mx-auto">
+        <!-- Header -->
+        <div class="text-center mb-8">
+            <h1 class="text-5xl font-bold text-white mb-2">🏆 Competição Fitness</h1>
+            <p class="text-white text-lg opacity-90">Quem será o campeão dos hábitos saudáveis?</p>
+            <div id="syncIndicator" class="mt-3 inline-block bg-white bg-opacity-20 px-4 py-2 rounded-full text-white text-sm">
+                <span id="syncStatus">💾 Local</span>
+            </div>
+        </div>
+
+        <!-- Setup Modal -->
+        <div id="setupModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+            <div class="card rounded-2xl p-8 max-w-md w-full mx-4">
+                <h2 class="text-3xl font-bold mb-6 text-gray-800">⚙️ Configuração</h2>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-gray-700 font-semibold mb-2">Nome do Jogador 1</label>
+                        <input type="text" id="player1Name" class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none" placeholder="Digite o nome" value="Leticia">
+                    </div>
+                    <div>
+                        <label class="block text-gray-700 font-semibold mb-2">Nome do Jogador 2</label>
+                        <input type="text" id="player2Name" class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none" placeholder="Digite o nome" value="Lidio">
+                    </div>
+                    <button onclick="saveSetup()" class="w-full bg-gradient-to-r from-blue-500 to-purple-600 text-white py-3 rounded-lg font-bold hover:opacity-90 transition">
+                        Iniciar Competição
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- GitHub Config Modal -->
+        <div id="githubModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+            <div class="card rounded-2xl p-8 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+                <h2 class="text-3xl font-bold mb-4 text-gray-800">🔗 Configuração GitHub</h2>
+                <p class="text-sm text-gray-600 mb-6">Configure para sincronizar automaticamente os dados com seu repositório GitHub</p>
+                
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-gray-700 font-semibold mb-2">Usuário GitHub</label>
+                        <input type="text" id="githubUser" class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none" placeholder="seu-usuario">
+                    </div>
+                    <div>
+                        <label class="block text-gray-700 font-semibold mb-2">Nome do Repositório</label>
+                        <input type="text" id="githubRepo" class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none" placeholder="fitness-competition">
+                    </div>
+                    <div>
+                        <label class="block text-gray-700 font-semibold mb-2">Branch</label>
+                        <input type="text" id="githubBranch" class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none" placeholder="main" value="main">
+                    </div>
+                    <div>
+                        <label class="block text-gray-700 font-semibold mb-2">Token de Acesso (PAT)</label>
+                        <input type="password" id="githubToken" class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none" placeholder="ghp_...">
+                        <p class="text-xs text-gray-500 mt-1">
+                            <a href="https://github.com/settings/tokens/new?scopes=repo&description=Fitness%20Competition" target="_blank" class="text-blue-500 hover:underline">
+                                Criar novo token →
+                            </a> (necessário permissão: repo)
+                        </p>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <input type="checkbox" id="autoSync" class="w-5 h-5">
+                        <label for="autoSync" class="text-gray-700 font-semibold">Sincronização Automática</label>
+                    </div>
+                    
+                    <div class="flex gap-3 mt-6">
+                        <button onclick="saveGitHubConfig()" class="flex-1 bg-gradient-to-r from-green-500 to-green-600 text-white py-3 rounded-lg font-bold hover:opacity-90 transition">
+                            💾 Salvar Configuração
+                        </button>
+                        <button onclick="closeGitHubModal()" class="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-800 py-3 rounded-lg font-bold transition">
+                            Cancelar
+                        </button>
+                    </div>
+                    <button onclick="testGitHubConnection()" class="w-full bg-blue-500 hover:bg-blue-600 text-white py-2 rounded-lg text-sm transition">
+                        🔍 Testar Conexão
+                    </button>
+                </div>
+                <div id="githubStatus" class="mt-4 text-sm text-center"></div>
+            </div>
+        </div>
+
+        <!-- Main Dashboard -->
+        <div id="dashboard" class="hidden">
+            <!-- Score Board -->
+            <div class="card rounded-2xl p-6 mb-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-2xl font-bold text-gray-800">📊 Placar Geral</h2>
+                    <button onclick="resetData()" class="text-sm bg-gray-200 hover:bg-gray-300 px-4 py-2 rounded-lg transition">
+                        Resetar Tudo
+                    </button>
+                </div>
+                <div class="grid md:grid-cols-3 gap-6">
+                    <!-- Player 1 -->
+                    <div id="player1Card" class="player-card card rounded-xl p-6 text-center">
+                        <div class="text-4xl mb-2">👤</div>
+                        <h3 id="player1NameDisplay" class="text-2xl font-bold text-gray-800 mb-2"></h3>
+                        <div id="player1Score" class="text-6xl font-bold text-blue-600 mb-2">0</div>
+                        <div class="text-gray-600">pontos</div>
+                    </div>
+
+                    <!-- VS -->
+                    <div class="flex flex-col justify-center items-center">
+                        <div class="text-5xl font-bold text-white mb-4">VS</div>
+                        <div id="winner" class="text-2xl font-bold text-white bg-black bg-opacity-30 px-6 py-3 rounded-full"></div>
+                        <div id="difference" class="text-lg text-white mt-2"></div>
+                    </div>
+
+                    <!-- Player 2 -->
+                    <div id="player2Card" class="player-card card rounded-xl p-6 text-center">
+                        <div class="text-4xl mb-2">👤</div>
+                        <h3 id="player2NameDisplay" class="text-2xl font-bold text-gray-800 mb-2"></h3>
+                        <div id="player2Score" class="text-6xl font-bold text-purple-600 mb-2">0</div>
+                        <div class="text-gray-600">pontos</div>
+                    </div>
+                </div>
+
+                <!-- Progress Bars -->
+                <div class="mt-8">
+                    <div class="mb-4">
+                        <div class="flex justify-between text-sm text-gray-700 mb-1">
+                            <span id="player1NameBar"></span>
+                            <span id="player1Percentage">0%</span>
+                        </div>
+                        <div class="w-full bg-gray-200 rounded-full h-4">
+                            <div id="player1Progress" class="progress-bar bg-gradient-to-r from-blue-500 to-blue-600 h-4 rounded-full" style="width: 0%"></div>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="flex justify-between text-sm text-gray-700 mb-1">
+                            <span id="player2NameBar"></span>
+                            <span id="player2Percentage">0%</span>
+                        </div>
+                        <div class="w-full bg-gray-200 rounded-full h-4">
+                            <div id="player2Progress" class="progress-bar bg-gradient-to-r from-purple-500 to-purple-600 h-4 rounded-full" style="width: 0%"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="grid md:grid-cols-2 gap-6 mb-6">
+                <!-- Player 1 Actions -->
+                <div class="card rounded-2xl p-6">
+                    <h3 class="text-xl font-bold text-gray-800 mb-4" id="player1Actions"></h3>
+                    <div class="space-y-3">
+                        <button onclick="addEvent(1, 'gym')" class="w-full btn-gym text-white py-4 rounded-lg font-bold hover:opacity-90 transition text-lg">
+                            🏋️ Fui à academia (+1)
+                        </button>
+                        <button onclick="addEvent(1, 'junk')" class="w-full btn-junk text-white py-4 rounded-lg font-bold hover:opacity-90 transition text-lg">
+                            🍔 Comi junk food (-1)
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Player 2 Actions -->
+                <div class="card rounded-2xl p-6">
+                    <h3 class="text-xl font-bold text-gray-800 mb-4" id="player2Actions"></h3>
+                    <div class="space-y-3">
+                        <button onclick="addEvent(2, 'gym')" class="w-full btn-gym text-white py-4 rounded-lg font-bold hover:opacity-90 transition text-lg">
+                            🏋️ Fui à academia (+1)
+                        </button>
+                        <button onclick="addEvent(2, 'junk')" class="w-full btn-junk text-white py-4 rounded-lg font-bold hover:opacity-90 transition text-lg">
+                            🍔 Comi junk food (-1)
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Chart -->
+            <div class="card rounded-2xl p-6 mb-6">
+                <h2 class="text-2xl font-bold text-gray-800 mb-4">📈 Evolução de Pontos</h2>
+                <canvas id="evolutionChart"></canvas>
+            </div>
+
+            <!-- History -->
+            <div class="card rounded-2xl p-6 mb-6">
+                <h2 class="text-2xl font-bold text-gray-800 mb-4">📜 Histórico</h2>
+                <div id="history" class="space-y-2 max-h-96 overflow-y-auto">
+                    <p class="text-gray-500 text-center py-8">Nenhum evento registrado ainda</p>
+                </div>
+            </div>
+
+            <!-- Blog/Posts Section -->
+            <div class="card rounded-2xl p-6 mb-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-2xl font-bold text-gray-800">📝 Blog & Atualizações</h2>
+                    <button onclick="toggleBlog()" class="text-sm bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition">
+                        Mostrar/Ocultar
+                    </button>
+                </div>
+                <div id="blogSection" class="space-y-4 hidden">
+                    <div class="text-gray-500 text-center py-4">Carregando posts...</div>
+                </div>
+            </div>
+
+            <!-- Data Management -->
+            <div class="card rounded-2xl p-6">
+                <h2 class="text-2xl font-bold text-gray-800 mb-4">💾 Gerenciar Dados</h2>
+                
+                <!-- GitHub Sync Section -->
+                <div class="mb-6 p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg border-2 border-blue-200">
+                    <div class="flex justify-between items-center mb-3">
+                        <h3 class="text-lg font-bold text-gray-800">🔗 Sincronização GitHub</h3>
+                        <span id="githubConfigStatus" class="text-sm text-gray-600">Não configurado</span>
+                    </div>
+                    <div class="grid md:grid-cols-2 gap-3">
+                        <button onclick="openGitHubModal()" class="bg-gradient-to-r from-gray-700 to-gray-900 hover:opacity-90 text-white py-3 rounded-lg font-bold transition">
+                            ⚙️ Configurar GitHub
+                        </button>
+                        <button onclick="syncWithGitHub()" id="syncButton" class="bg-gradient-to-r from-green-500 to-green-600 hover:opacity-90 text-white py-3 rounded-lg font-bold transition" disabled>
+                            🔄 Sincronizar Agora
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Local Operations -->
+                <div class="grid md:grid-cols-3 gap-4">
+                    <button onclick="loadFromJSON()" class="bg-green-500 hover:bg-green-600 text-white py-3 rounded-lg font-bold transition">
+                        📥 Carregar do JSON
+                    </button>
+                    <button onclick="saveToJSON()" class="bg-blue-500 hover:bg-blue-600 text-white py-3 rounded-lg font-bold transition">
+                        💾 Salvar no JSON
+                    </button>
+                    <button onclick="exportData()" class="bg-purple-500 hover:bg-purple-600 text-white py-3 rounded-lg font-bold transition">
+                        📤 Exportar Dados
+                    </button>
+                </div>
+                <div id="dataStatus" class="mt-4 text-sm text-center text-gray-600"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global state
+        let state = {
+            players: {
+                1: { name: 'Leticia', score: 0 },
+                2: { name: 'Lidio', score: 0 }
+            },
+            events: []
+        };
+
+        let chart = null;
+
+        // GitHub Configuration
+        let githubConfig = {
+            user: '',
+            repo: '',
+            branch: 'main',
+            token: '',
+            autoSync: false,
+            enabled: false
+        };
+
+        // Load GitHub config from localStorage
+        function loadGitHubConfig() {
+            const saved = localStorage.getItem('githubConfig');
+            if (saved) {
+                githubConfig = JSON.parse(saved);
+                updateGitHubUI();
+            }
+        }
+
+        // Save GitHub config to localStorage
+        function saveGitHubConfigToStorage() {
+            localStorage.setItem('githubConfig', JSON.stringify(githubConfig));
+        }
+
+        // Update GitHub UI elements
+        function updateGitHubUI() {
+            const statusEl = document.getElementById('githubConfigStatus');
+            const syncButton = document.getElementById('syncButton');
+            const syncStatus = document.getElementById('syncStatus');
+            
+            if (githubConfig.enabled) {
+                statusEl.textContent = `✅ ${githubConfig.user}/${githubConfig.repo}`;
+                statusEl.className = 'text-sm text-green-600 font-semibold';
+                syncButton.disabled = false;
+                syncButton.classList.remove('opacity-50', 'cursor-not-allowed');
+                syncStatus.innerHTML = githubConfig.autoSync ? '🔄 Auto-sync ativo' : '🔗 GitHub conectado';
+            } else {
+                statusEl.textContent = 'Não configurado';
+                statusEl.className = 'text-sm text-gray-600';
+                syncButton.disabled = true;
+                syncButton.classList.add('opacity-50', 'cursor-not-allowed');
+                syncStatus.innerHTML = '💾 Local';
+            }
+        }
+
+        // Open GitHub Modal
+        function openGitHubModal() {
+            document.getElementById('githubUser').value = githubConfig.user || '';
+            document.getElementById('githubRepo').value = githubConfig.repo || '';
+            document.getElementById('githubBranch').value = githubConfig.branch || 'main';
+            document.getElementById('githubToken').value = githubConfig.token || '';
+            document.getElementById('autoSync').checked = githubConfig.autoSync || false;
+            document.getElementById('githubModal').classList.remove('hidden');
+            document.getElementById('githubStatus').textContent = '';
+        }
+
+        // Close GitHub Modal
+        function closeGitHubModal() {
+            document.getElementById('githubModal').classList.add('hidden');
+        }
+
+        // Save GitHub Configuration
+        function saveGitHubConfig() {
+            githubConfig.user = document.getElementById('githubUser').value.trim();
+            githubConfig.repo = document.getElementById('githubRepo').value.trim();
+            githubConfig.branch = document.getElementById('githubBranch').value.trim() || 'main';
+            githubConfig.token = document.getElementById('githubToken').value.trim();
+            githubConfig.autoSync = document.getElementById('autoSync').checked;
+            
+            if (!githubConfig.user || !githubConfig.repo || !githubConfig.token) {
+                showGitHubStatus('❌ Preencha todos os campos obrigatórios!', 'red');
+                return;
+            }
+            
+            githubConfig.enabled = true;
+            saveGitHubConfigToStorage();
+            updateGitHubUI();
+            closeGitHubModal();
+            showStatus('✅ Configuração do GitHub salva com sucesso!', 'green');
+        }
+
+        // Test GitHub Connection
+        async function testGitHubConnection() {
+            const user = document.getElementById('githubUser').value.trim();
+            const repo = document.getElementById('githubRepo').value.trim();
+            const token = document.getElementById('githubToken').value.trim();
+            
+            if (!user || !repo || !token) {
+                showGitHubStatus('❌ Preencha os campos primeiro!', 'red');
+                return;
+            }
+            
+            showGitHubStatus('🔍 Testando conexão...', 'blue');
+            
+            try {
+                const response = await fetch(`https://api.github.com/repos/${user}/${repo}`, {
+                    headers: {
+                        'Authorization': `token ${token}`,
+                        'Accept': 'application/vnd.github.v3+json'
+                    }
+                });
+                
+                if (response.ok) {
+                    showGitHubStatus('✅ Conexão bem-sucedida!', 'green');
+                } else if (response.status === 404) {
+                    showGitHubStatus('❌ Repositório não encontrado!', 'red');
+                } else if (response.status === 401) {
+                    showGitHubStatus('❌ Token inválido!', 'red');
+                } else {
+                    showGitHubStatus(`❌ Erro: ${response.status}`, 'red');
+                }
+            } catch (error) {
+                showGitHubStatus('❌ Erro de conexão!', 'red');
+                console.error(error);
+            }
+        }
+
+        // Show GitHub Status
+        function showGitHubStatus(message, color) {
+            const statusDiv = document.getElementById('githubStatus');
+            statusDiv.textContent = message;
+            statusDiv.className = `mt-4 text-sm text-center text-${color}-600 font-semibold`;
+        }
+
+        // Sync with GitHub
+        async function syncWithGitHub() {
+            if (!githubConfig.enabled) {
+                showStatus('❌ Configure o GitHub primeiro!', 'red');
+                return;
+            }
+            
+            showStatus('🔄 Sincronizando com GitHub...', 'blue');
+            document.getElementById('syncStatus').innerHTML = '⏳ Sincronizando...';
+            
+            try {
+                // Prepare data
+                const playersData = preparePlayersData();
+                const historyData = state.events;
+                
+                // Update both files
+                await updateGitHubFile('data/players.json', playersData);
+                await updateGitHubFile('data/history.json', historyData);
+                
+                showStatus('✅ Dados sincronizados com GitHub!', 'green');
+                document.getElementById('syncStatus').innerHTML = githubConfig.autoSync ? '🔄 Auto-sync ativo' : '✅ Sincronizado';
+                
+                setTimeout(() => {
+                    document.getElementById('syncStatus').innerHTML = githubConfig.autoSync ? '🔄 Auto-sync ativo' : '🔗 GitHub conectado';
+                }, 3000);
+            } catch (error) {
+                showStatus('❌ Erro ao sincronizar: ' + error.message, 'red');
+                document.getElementById('syncStatus').innerHTML = '❌ Erro ao sincronizar';
+                console.error('Sync error:', error);
+            }
+        }
+
+        // Update file on GitHub
+        async function updateGitHubFile(path, data) {
+            const { user, repo, branch, token } = githubConfig;
+            const apiUrl = `https://api.github.com/repos/${user}/${repo}/contents/${path}`;
+            
+            // Get current file SHA
+            let sha = null;
+            try {
+                const getResponse = await fetch(`${apiUrl}?ref=${branch}`, {
+                    headers: {
+                        'Authorization': `token ${token}`,
+                        'Accept': 'application/vnd.github.v3+json'
+                    }
+                });
+                
+                if (getResponse.ok) {
+                    const fileData = await getResponse.json();
+                    sha = fileData.sha;
+                }
+            } catch (error) {
+                console.log('File does not exist yet, will create new');
+            }
+            
+            // Prepare content
+            const content = btoa(unescape(encodeURIComponent(JSON.stringify(data, null, 2))));
+            
+            // Update or create file
+            const updateData = {
+                message: `Update ${path} - ${new Date().toISOString()}`,
+                content: content,
+                branch: branch
+            };
+            
+            if (sha) {
+                updateData.sha = sha;
+            }
+            
+            const response = await fetch(apiUrl, {
+                method: 'PUT',
+                headers: {
+                    'Authorization': `token ${token}`,
+                    'Accept': 'application/vnd.github.v3+json',
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(updateData)
+            });
+            
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.message || `HTTP ${response.status}`);
+            }
+            
+            return await response.json();
+        }
+
+        // Prepare players data for export
+        function preparePlayersData() {
+            return [
+                {
+                    id: 1,
+                    name: state.players[1].name,
+                    score: state.players[1].score,
+                    gymCount: state.events.filter(e => e.playerId === 1 && e.type === 'gym').length,
+                    junkCount: state.events.filter(e => e.playerId === 1 && e.type === 'junk').length,
+                    avatar: "👤"
+                },
+                {
+                    id: 2,
+                    name: state.players[2].name,
+                    score: state.players[2].score,
+                    gymCount: state.events.filter(e => e.playerId === 2 && e.type === 'gym').length,
+                    junkCount: state.events.filter(e => e.playerId === 2 && e.type === 'junk').length,
+                    avatar: "👤"
+                }
+            ];
+        }
+
+        // Load data from JSON files
+        async function loadFromJSON() {
+            try {
+                showStatus('Carregando dados do JSON...', 'blue');
+                
+                // Load players data
+                const playersResponse = await fetch('data/players.json');
+                const players = await playersResponse.json();
+                
+                // Load history data
+                const historyResponse = await fetch('data/history.json');
+                const history = await historyResponse.json();
+                
+                // Update state
+                state.players[1].name = players[0].name;
+                state.players[1].score = players[0].score;
+                state.players[2].name = players[1].name;
+                state.players[2].score = players[1].score;
+                state.events = history;
+                
+                saveState();
+                showDashboard();
+                showStatus('✅ Dados carregados com sucesso!', 'green');
+                
+                setTimeout(() => showStatus('', ''), 3000);
+            } catch (error) {
+                console.error('Erro ao carregar JSON:', error);
+                showStatus('❌ Erro ao carregar dados. Usando localStorage.', 'red');
+            }
+        }
+
+        // Save current state to JSON format (download)
+        async function saveToJSON() {
+            try {
+                // Prepare players data
+                const playersData = [
+                    {
+                        id: 1,
+                        name: state.players[1].name,
+                        score: state.players[1].score,
+                        gymCount: state.events.filter(e => e.playerId === 1 && e.type === 'gym').length,
+                        junkCount: state.events.filter(e => e.playerId === 1 && e.type === 'junk').length,
+                        avatar: "👤"
+                    },
+                    {
+                        id: 2,
+                        name: state.players[2].name,
+                        score: state.players[2].score,
+                        gymCount: state.events.filter(e => e.playerId === 2 && e.type === 'gym').length,
+                        junkCount: state.events.filter(e => e.playerId === 2 && e.type === 'junk').length,
+                        avatar: "👤"
+                    }
+                ];
+
+                // Show instructions for manual update
+                const instruction = `
+📋 Para atualizar os arquivos JSON:
+
+1. PLAYERS.JSON:
+${JSON.stringify(playersData, null, 2)}
+
+2. HISTORY.JSON:
+${JSON.stringify(state.events, null, 2)}
+
+💡 Copie estes dados e cole nos arquivos correspondentes em data/
+✅ Depois faça commit no GitHub para atualizar o site!
+                `;
+
+                alert(instruction);
+                console.log('Players data:', playersData);
+                console.log('History data:', state.events);
+                
+                showStatus('📋 Dados prontos para copiar (veja console F12)', 'blue');
+            } catch (error) {
+                console.error('Erro ao preparar JSON:', error);
+                showStatus('❌ Erro ao preparar dados', 'red');
+            }
+        }
+
+        // Export data as downloadable files
+        function exportData() {
+            const playersData = [
+                {
+                    id: 1,
+                    name: state.players[1].name,
+                    score: state.players[1].score,
+                    gymCount: state.events.filter(e => e.playerId === 1 && e.type === 'gym').length,
+                    junkCount: state.events.filter(e => e.playerId === 1 && e.type === 'junk').length,
+                    avatar: "👤"
+                },
+                {
+                    id: 2,
+                    name: state.players[2].name,
+                    score: state.players[2].score,
+                    gymCount: state.events.filter(e => e.playerId === 2 && e.type === 'gym').length,
+                    junkCount: state.events.filter(e => e.playerId === 2 && e.type === 'junk').length,
+                    avatar: "👤"
+                }
+            ];
+
+            // Download players.json
+            downloadJSON(playersData, 'players.json');
+            
+            // Download history.json
+            setTimeout(() => {
+                downloadJSON(state.events, 'history.json');
+                showStatus('✅ Arquivos baixados! Substitua em data/', 'green');
+            }, 500);
+        }
+
+        function downloadJSON(data, filename) {
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function showStatus(message, color) {
+            const statusDiv = document.getElementById('dataStatus');
+            statusDiv.textContent = message;
+            statusDiv.className = `mt-4 text-sm text-center text-${color}-600 font-semibold`;
+        }
+
+        // Load and display blog posts
+        async function loadBlogPosts() {
+            try {
+                const response = await fetch('data/posts-index.json');
+                const posts = await response.json();
+                
+                const blogSection = document.getElementById('blogSection');
+                blogSection.innerHTML = '';
+                
+                for (const post of posts) {
+                    const postDiv = document.createElement('div');
+                    postDiv.className = 'border-b border-gray-200 pb-4 last:border-b-0';
+                    postDiv.innerHTML = `
+                        <div class="flex justify-between items-start mb-2">
+                            <h3 class="text-xl font-bold text-gray-800">${post.title}</h3>
+                            <span class="text-sm text-gray-500">${new Date(post.date).toLocaleDateString('pt-BR')}</span>
+                        </div>
+                        <button onclick="loadPost('${post.file}')" class="text-blue-500 hover:text-blue-700 text-sm font-semibold">
+                            Ler mais →
+                        </button>
+                        <div id="post-${post.id}" class="hidden mt-4 prose max-w-none"></div>
+                    `;
+                    blogSection.appendChild(postDiv);
+                }
+            } catch (error) {
+                console.error('Erro ao carregar posts:', error);
+                document.getElementById('blogSection').innerHTML = 
+                    '<p class="text-gray-500 text-center py-4">Nenhum post disponível</p>';
+            }
+        }
+
+        async function loadPost(filename) {
+            try {
+                const response = await fetch(`data/posts/${filename}`);
+                const markdown = await response.text();
+                
+                const postId = filename.replace('.md', '').replace('post', '');
+                const postDiv = document.getElementById(`post-${postId}`);
+                
+                if (postDiv.classList.contains('hidden')) {
+                    postDiv.innerHTML = marked.parse(markdown);
+                    postDiv.classList.remove('hidden');
+                } else {
+                    postDiv.classList.add('hidden');
+                }
+            } catch (error) {
+                console.error('Erro ao carregar post:', error);
+                alert('Erro ao carregar post');
+            }
+        }
+
+        function toggleBlog() {
+            const blogSection = document.getElementById('blogSection');
+            blogSection.classList.toggle('hidden');
+        }
+
+        // Initialize
+        function init() {
+            loadState();
+            loadGitHubConfig();
+            // Se não há dados salvos, usa os padrão
+            if (!state.players[1].name || !state.players[2].name) {
+                state.players[1].name = 'Leticia';
+                state.players[2].name = 'Lidio';
+                saveState();
+            }
+            showDashboard();
+            loadBlogPosts(); // Load blog posts
+            updateGitHubUI();
+        }
+
+        // Show/Hide modals
+        function showSetup() {
+            document.getElementById('setupModal').classList.remove('hidden');
+            document.getElementById('dashboard').classList.add('hidden');
+        }
+
+        function showDashboard() {
+            document.getElementById('setupModal').classList.add('hidden');
+            document.getElementById('dashboard').classList.remove('hidden');
+            updateUI();
+        }
+
+        // Save setup
+        function saveSetup() {
+            const player1 = document.getElementById('player1Name').value.trim();
+            const player2 = document.getElementById('player2Name').value.trim();
+
+            if (!player1 || !player2) {
+                alert('Por favor, preencha os nomes dos dois jogadores!');
+                return;
+            }
+
+            state.players[1].name = player1;
+            state.players[2].name = player2;
+            saveState();
+            showDashboard();
+        }
+
+        // Add event
+        function addEvent(playerId, eventType) {
+            const today = new Date().toISOString().split('T')[0];
+            
+            // Check if event already exists today
+            const existingEvent = state.events.find(e => 
+                e.playerId === playerId && 
+                e.type === eventType && 
+                e.date === today
+            );
+
+            if (existingEvent) {
+                alert(`Você já registrou este evento hoje!`);
+                return;
+            }
+
+            // Add points
+            const points = eventType === 'gym' ? 1 : -1;
+            state.players[playerId].score += points;
+
+            // Add to history
+            state.events.unshift({
+                playerId,
+                type: eventType,
+                points,
+                date: today,
+                timestamp: new Date().toISOString()
+            });
+
+            saveState();
+            updateUI();
+            
+            // Auto-sync with GitHub if enabled
+            if (githubConfig.enabled && githubConfig.autoSync) {
+                syncWithGitHub();
+            }
+        }
+
+        // Update UI
+        function updateUI() {
+            // Update names
+            document.getElementById('player1NameDisplay').textContent = state.players[1].name;
+            document.getElementById('player2NameDisplay').textContent = state.players[2].name;
+            document.getElementById('player1Actions').textContent = state.players[1].name;
+            document.getElementById('player2Actions').textContent = state.players[2].name;
+            document.getElementById('player1NameBar').textContent = state.players[1].name;
+            document.getElementById('player2NameBar').textContent = state.players[2].name;
+
+            // Update scores
+            const score1 = state.players[1].score;
+            const score2 = state.players[2].score;
+            document.getElementById('player1Score').textContent = score1;
+            document.getElementById('player2Score').textContent = score2;
+
+            // Update winner
+            const player1Card = document.getElementById('player1Card');
+            const player2Card = document.getElementById('player2Card');
+            player1Card.classList.remove('winner-glow');
+            player2Card.classList.remove('winner-glow');
+
+            if (score1 > score2) {
+                document.getElementById('winner').textContent = `${state.players[1].name} está ganhando! 🏆`;
+                player1Card.classList.add('winner-glow');
+            } else if (score2 > score1) {
+                document.getElementById('winner').textContent = `${state.players[2].name} está ganhando! 🏆`;
+                player2Card.classList.add('winner-glow');
+            } else {
+                document.getElementById('winner').textContent = 'Empate!';
+            }
+
+            // Update difference
+            const diff = Math.abs(score1 - score2);
+            document.getElementById('difference').textContent = diff > 0 ? `Diferença: ${diff} pontos` : '';
+
+            // Update progress bars
+            const total = Math.abs(score1) + Math.abs(score2) || 1;
+            const percent1 = ((score1 / total) * 100).toFixed(1);
+            const percent2 = ((score2 / total) * 100).toFixed(1);
+            
+            document.getElementById('player1Progress').style.width = `${Math.max(0, percent1)}%`;
+            document.getElementById('player2Progress').style.width = `${Math.max(0, percent2)}%`;
+            document.getElementById('player1Percentage').textContent = `${Math.max(0, percent1)}%`;
+            document.getElementById('player2Percentage').textContent = `${Math.max(0, percent2)}%`;
+
+            // Update history
+            updateHistory();
+
+            // Update chart
+            updateChart();
+        }
+
+        // Update history
+        function updateHistory() {
+            const historyDiv = document.getElementById('history');
+            
+            if (state.events.length === 0) {
+                historyDiv.innerHTML = '<p class="text-gray-500 text-center py-8">Nenhum evento registrado ainda</p>';
+                return;
+            }
+
+            historyDiv.innerHTML = state.events.map(event => {
+                const playerName = state.players[event.playerId].name;
+                const emoji = event.type === 'gym' ? '🏋️' : '🍔';
+                const action = event.type === 'gym' ? 'Academia' : 'Junk Food';
+                const pointsClass = event.points > 0 ? 'text-green-600' : 'text-red-600';
+                const pointsSign = event.points > 0 ? '+' : '';
+                const date = new Date(event.timestamp);
+                const dateStr = date.toLocaleDateString('pt-BR');
+                const timeStr = date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+
+                return `
+                    <div class="history-item flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                        <div class="flex items-center gap-3">
+                            <div class="text-2xl">${emoji}</div>
+                            <div>
+                                <div class="font-bold text-gray-800">${playerName}</div>
+                                <div class="text-sm text-gray-600">${action}</div>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <div class="font-bold text-lg ${pointsClass}">${pointsSign}${event.points}</div>
+                            <div class="text-xs text-gray-500">${dateStr} ${timeStr}</div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Update chart
+        function updateChart() {
+            const ctx = document.getElementById('evolutionChart').getContext('2d');
+
+            // Group events by date and calculate cumulative scores
+            const dateMap = {};
+            let score1 = 0;
+            let score2 = 0;
+
+            // Sort events by timestamp (oldest first)
+            const sortedEvents = [...state.events].reverse();
+
+            sortedEvents.forEach(event => {
+                if (event.playerId === 1) {
+                    score1 += event.points;
+                } else {
+                    score2 += event.points;
+                }
+
+                const date = event.date;
+                dateMap[date] = { score1, score2 };
+            });
+
+            // Create labels and data
+            const labels = Object.keys(dateMap).sort();
+            const data1 = labels.map(date => dateMap[date].score1);
+            const data2 = labels.map(date => dateMap[date].score2);
+
+            // Format dates
+            const formattedLabels = labels.map(date => {
+                const d = new Date(date + 'T00:00:00');
+                return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+            });
+
+            if (chart) {
+                chart.destroy();
+            }
+
+            chart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: formattedLabels.length > 0 ? formattedLabels : ['Hoje'],
+                    datasets: [
+                        {
+                            label: state.players[1].name,
+                            data: data1.length > 0 ? data1 : [0],
+                            borderColor: 'rgb(59, 130, 246)',
+                            backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                            tension: 0.4,
+                            fill: true
+                        },
+                        {
+                            label: state.players[2].name,
+                            data: data2.length > 0 ? data2 : [0],
+                            borderColor: 'rgb(168, 85, 247)',
+                            backgroundColor: 'rgba(168, 85, 247, 0.1)',
+                            tension: 0.4,
+                            fill: true
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top'
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                stepSize: 1
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Save state to localStorage
+        function saveState() {
+            localStorage.setItem('fitnessCompetition', JSON.stringify(state));
+        }
+
+        // Load state from localStorage
+        function loadState() {
+            const saved = localStorage.getItem('fitnessCompetition');
+            if (saved) {
+                state = JSON.parse(saved);
+            }
+        }
+
+        // Reset all data
+        function resetData() {
+            if (confirm('Tem certeza que deseja resetar todos os dados? Esta ação não pode ser desfeita!')) {
+                localStorage.removeItem('fitnessCompetition');
+                state = {
+                    players: {
+                        1: { name: '', score: 0 },
+                        2: { name: '', score: 0 }
+                    },
+                    events: []
+                };
+                if (chart) {
+                    chart.destroy();
+                    chart = null;
+                }
+                showSetup();
+            }
+        }
+
+        // Initialize on load
+        init();
+    </script>
+</body>
+</html>
